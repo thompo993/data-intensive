@@ -1,0 +1,30 @@
+#!/bin/bash
+# ======================
+# pythonopenmpscript.sh
+# ======================
+
+#SBATCH --job-name=test_job
+#SBATCH --partition=teach_cpu
+#SBATCH --account=phys040684
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=24
+#SBATCH --time=0:10:00
+#SBATCH --mem=200M
+
+# Load modules required for runtime e.g.
+source ~/initMamba.sh
+mamba activate projectenv
+
+cd $SLURM_SUBMIT_DIR
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+
+# Now run your program with the usual command
+python run_picalc_pyx_omp.py 1000000000 1
+python run_picalc_pyx_omp.py 1000000000 2
+python run_picalc_pyx_omp.py 1000000000 4
+python run_picalc_pyx_omp.py 1000000000 8
+python run_picalc_pyx_omp.py 1000000000 12
+python run_picalc_pyx_omp.py 1000000000 16
+python run_picalc_pyx_omp.py 1000000000 20
+python run_picalc_pyx_omp.py 1000000000 24

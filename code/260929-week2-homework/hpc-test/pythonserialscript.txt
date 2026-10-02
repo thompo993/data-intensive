@@ -1,0 +1,25 @@
+#!/bin/bash
+# ======================
+# pythonserialscript.sh
+# ======================
+
+#SBATCH --job-name=test_job
+#SBATCH --partition=teach_cpu
+#SBATCH --account=phys040684
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=0:0:10
+#SBATCH --mem=100M
+
+# Load modules required for runtime either the module way:
+# module add languages/python
+# Or the Mamba way:
+source ~/initMamba.sh
+mamba activate projectenv
+
+cd $SLURM_SUBMIT_DIR
+
+# Now run your program with the usual command
+python picalc_py.py 10000000
+

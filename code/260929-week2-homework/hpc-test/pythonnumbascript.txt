@@ -1,0 +1,23 @@
+#!/bin/bash
+# ======================
+# pythonnumbascript.sh
+# ======================
+
+#SBATCH --job-name=test_job
+#SBATCH --partition=teach_cpu
+#SBATCH --account=phys040684
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=24
+#SBATCH --time=0:10:00
+#SBATCH --mem=200M
+
+# Load modules required for runtime:
+source ~/initMamba.sh
+mamba activate projectenv
+
+cd $SLURM_SUBMIT_DIR
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+
+# Now run your program with the usual command
+python picalc_numba1.py 100000000
