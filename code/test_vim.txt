@@ -1,6 +1,0 @@
-trying to learn vim
-
-this is here for navigation purposes 
- 
-pyhton, numba, is easier to run than cyhton
-test
