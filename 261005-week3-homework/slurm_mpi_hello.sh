@@ -19,4 +19,4 @@ mamba activate mpi_test
 cd $SLURM_SUBMIT_DIR
 
 
-mpirun -np 4 python mpi_hello.py
+mpirun --bind-to none python mpi_hello.py
