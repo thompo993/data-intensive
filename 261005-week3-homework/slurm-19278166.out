@@ -1,0 +1,4 @@
+cpu-bind=MASK - bp1-compute189, task  0  0 [635084]: mask 0x100000001 set
+/tmp/slurmd/job19278166/slurm_script: line 16: source: /user/home/sv23035/: is a directory
+/tmp/slurmd/job19278166/slurm_script: line 17: mamba: command not found
+/tmp/slurmd/job19278166/slurm_script: line 21: mpirun: command not found

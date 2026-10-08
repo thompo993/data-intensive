@@ -1,23 +1,21 @@
 #!/bin/bash
-# ./run.sh script.py 1000
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 <script_name.py> <iterations>"
-    exit 1
-fi
+# ======================
+# slurm_mpi_hello.sh
+# ======================
+#SBATCH --job-name=mpi_hello
+#SBATCH --partition=teach_cpu
+#SBATCH --account=phys040684
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=1
+#SBATCH --time=0:0:5
+#SBATCH --mem=100M
 
-SCRIPT=$1
-ITERATIONS=$2
-OUTDIR="outputs"
 
-# Ensure output directory exists
-mkdir -p "$OUTDIR"
+# initialise mamba
+source ~/ initMamba.sh
+mamba activate mpi_test
+cd $SLURM_SUBMIT_DIR
 
-# Generate output filename
-BASENAME=$(basename "$SCRIPT" .py)
-TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-OUTPUT_FILE="${OUTDIR}/${BASENAME}_${ITERATIONS}iters_${TIMESTAMP}.log"
 
-# Execute and redirect stdout and stderr
-python3 "$SCRIPT" "$ITERATIONS" > "$OUTPUT_FILE" 2>&1
-
-echo "Execution complete. Output saved to $OUTPUT_FILE"
+mpirun -np 4 python mpi_hello.py
