@@ -4,5 +4,9 @@
 .ipynb_checkpoints/
 */.ipynb_checkpoints/*
 .vscode
+secrets/
+*.json
+miniforge3/
+Miniforge3-Linux-x86_64.sh
 earth-monitoring-data/
 tutorial/
