@@ -19,7 +19,9 @@ import pandas as pd
 import datetime
 
 def initialize_gee():
-    """Handles authentication using the Service Account."""
+    """
+    Handles authentication using the Service Account.
+    """
     key_path = os.getenv('GEE_SERVICE_ACCOUNT_KEY')
     if not key_path:
         raise EnvironmentError("GEE_SERVICE_ACCOUNT_KEY not found.")
@@ -34,6 +36,20 @@ def initialize_gee():
             
     print("Successfully initialized Earth Engine!")
     return
+
+def get_gb_aoi(): 
+    """
+    Defines the area of interst (AOI) which is great gritan (england + scotland+wales)
+    """
+    uk_aoi = (ee.FeatureCollection("FAO/GAUL/2015/level1")
+        .filter(ee.Filter.eq("ADM0_NAME", "United Kingdom"))
+        .filter(ee.Filter.inList("ADM1_NAME", ["England", "Scotland", "Wales"]))
+        .geometry()
+    )
+    print("AOI area (km^2):", get_gb_aoi().area().divide(1e6).getInfo())
+    # Expect 229,000 km^2 
+    return uk_aoi
+    
 
 def get_temporal_composites(geometry, time_window):
     """
