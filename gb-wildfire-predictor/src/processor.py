@@ -172,18 +172,36 @@ def get_temporal_composites(geometry, time_window):
 
     return stacked_image
 
-def extract_features(stacked_image, geometry):
+def extract__features(stacked_image, geometry, scale=1000):
+    """ extracts spatial features (max, mean stdDev) and
+        timestamps across an ee.Imagecollection (our stacked images)
     """
-    The 'Reduction' Step:
-    Runs the heavy math on Google's servers.
-    """
-    # stats = stacked_image.reduceRegion(
-    #     reducer=ee.Reducer.max().combine(reducer=ee.Reducer.stdDev(), sharedInputs=True),
-    #     geometry=geometry,
-    #     scale=1000 # Very important: defines the resolution of your extraction
-    # )
-    # return stats.getInfo() # This is the ONLY time we pull data to local Python
-    pass
+    reducer = (ee.Reducer.max()
+            .combine(ee.Reducer.mean(), sharedInputs=True)
+            .combine(ee.Reducer.stdDev(), sharedInputs=True)
+    )
+    
+    def image_to_feature(image):
+        stats = image.reduceRegion(
+            reducer=reducer, 
+            geometry=geometry,
+            scale=scale,
+            maxPixels= 1_000_000_000 
+        )
+        window_start = ee.Date(image.get("system:time_start")).format("YYYY-MM-dd'T'HH:mm:ss")
+        return ee.Feature(None, stats).set("window_start", window_start)
+
+
+    features_composite = stacked_image.map(image_to_feature)
+    info = features_composite.getInfo()
+
+    return [f["properties"] for f in info["features"]]
+
+
+
+
+
+
 
 def save_to_parquet(feature_dict, base_path):
     """
@@ -193,6 +211,7 @@ def save_to_parquet(feature_dict, base_path):
     # 1. Create timestamp
     # 2. Create DataFrame
     # 3. df.to_parquet(filename)
+
     pass
 
 def main():
