@@ -203,25 +203,48 @@ def extract__features(stacked_image, geometry, scale=1000):
 
 
 
-def save_to_parquet(feature_dict, base_path):
+
+
+def save_to_parquet(rows, base_path):
     """
     The 'Persistence' Step:
     Converts the dictionary to a DataFrame and saves as Parquet.
     """
     # 1. Create timestamp
-    # 2. Create DataFrame
-    # 3. df.to_parquet(filename)
 
-    pass
+    # Source - https://stackoverflow.com/a/55022031
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    filename = f"{base_path}{timestamp}.parquet"
+
+    directory = os.path.dirname(filename)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    
+    
+    # 2. Create DataFrame   
+    df = pd.DataFrame(rows)
+    if df.empty:
+        raise ValueError("No data found from GEE, so not saving...")
+
+    df["window_start"] = pd.to_datetime(df["window_start"], utc=True)
+    df = df.sort_values("window_start").reset_index(drop=True)
+    
+    # 3. df.to_parquet(filename)
+    cols = ["window_start"] + sorted(c for c in df.columns if c != "window_start")
+    df[cols].to_parquet(filename, index=False)
+    print(f"Saved: {filename}")
 
 def main():
     # 1. Setup
     initialize_gee()
     
     # 2. Define AOI (Use a polygon for Scotland/Wales/England)
-    # geometry = ee.Geometry.Polygon(...)
-    
+    gb_geom = get_gb_aoi()
+
     # 3. Process
+    composite = get_temporal_composites(geometry=gb_geom, )
+
+    
     # composite = get_temporal_composites(geometry, "24h")
     # features = extract_features(composite, geometry)
     
