@@ -71,6 +71,7 @@ def get_temporal_composites(geometry, time_window):
 
     start_date, end_date = time_window
 
+    # temperature 
     temp = (
         ee.ImageCollection("NASA/GLDAS/V021/NOAH/G025/T3H")
         .filterDate(start_date, end_date)
@@ -79,6 +80,36 @@ def get_temporal_composites(geometry, time_window):
         .subtract(273.15)
         .rename("temp_c")
     )
+
+    # humidity 
+    humidtiy = (ee.ImageCollection("NASA/GLDAS/V201/NOAH/G025/T3H")
+        .filterDate(start_date, end_date)
+        .select("Qair_f_inst")
+        .min()
+        .rename("humidity_q")
+    )
+
+    # rainfall 
+    rainfall = (ee.ImageCollection("NASA/GPM_L3/IMERG_V07")
+        .filterDate(start_date, end_date)
+        .select("precipitation")
+        .sum()
+        .multiply(0.5) # this turns the half hourly mm/hr rate into total rainfall in mm
+        .rename("precipitation_mm")
+    )
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     stacked_image = (temp)
