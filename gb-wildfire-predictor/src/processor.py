@@ -41,65 +41,16 @@ def get_gb_aoi():
     """
     Defines the area of interst (AOI) which is great gritan (england + scotland+wales)
     """
-    uk_aoi = (ee.FeatureCollection("FAO/GAUL/2015/level1")
+    gb_aoi = (ee.FeatureCollection("FAO/GAUL/2015/level1")
         .filter(ee.Filter.eq("ADM0_NAME", "United Kingdom"))
         .filter(ee.Filter.inList("ADM1_NAME", ["England", "Scotland", "Wales"]))
         .geometry()
     )
-    print("AOI area (km^2):", get_gb_aoi().area().divide(1e6).getInfo())
+    print("AOI area (km^2):", gb_aoi.area().divide(1e6).getInfo())
     # Expect 229,000 km^2 
-    return uk_aoi
-    
+    return gb_aoi
 
-def get_temporal_composites(geometry, time_window):
-    """
-    The 'Fusion' Step:
-    1. Define the time filter (e.g., last 24h).
-    2. Load collections (IMERG, MERRA-2, etc.).
-    3. Create a composite for each (e.g., .max() or .mean()).
-    4. Stack them using .addBands().
-
-    kwargs: 
-    geometry: UK coastline polygon 
-    time_window: (start_date, end_date) in 'YYYY-MM-DD' format
-    """
-    # Example logic:
-    # rainfall = ee.ImageCollection("NASA/GPM_L3/IMERG").filterBounds(geometry)...max()
-    # temp = ee.ImageCollection("MODIS_DATA").filterBounds(geometry)...max()
-    # stacked_image = rainfall.addBands(temp).addBands(wind)
-    # return stacked_image
-
-    start_date, end_date = time_window
-
-    # temperature 
-    temp = (
-        ee.ImageCollection("NASA/GLDAS/V021/NOAH/G025/T3H")
-        .filterDate(start_date, end_date)
-        .select("Tair_f_inst")
-        .max()
-        .subtract(273.15)
-        .rename("temp_c")
-    )
-
-    # humidity 
-    humidtiy = (ee.ImageCollection("NASA/GLDAS/V201/NOAH/G025/T3H")
-        .filterDate(start_date, end_date)
-        .select("Qair_f_inst")
-        .min()
-        .rename("humidity_q")
-    )
-
-    # rainfall 
-    rainfall = (ee.ImageCollection("NASA/GPM_L3/IMERG_V07")
-        .filterDate(start_date, end_date)
-        .select("precipitation")
-        .sum()
-        .multiply(0.5) # this turns the half hourly mm/hr rate into total rainfall in mm
-        .rename("precipitation_mm")
-    )
-
-
-    def compute_hourly_wind_vector(image):
+def compute_hourly_wind_vector(image):
         """
         Turns U and V ciomponents from NASA/GSFC/MERRA/slv/2. conducts calculations on the GEE server
         to reduce compute constraints
@@ -128,6 +79,54 @@ def get_temporal_composites(geometry, time_window):
 
         return magnitude.addBands(direction)
 
+def get_temporal_composites(geometry, time_window):
+    """
+    The 'Fusion' Step:
+    1. Define the time filter (e.g., last 24h).
+    2. Load collections (IMERG, MERRA-2, etc.).
+    3. Create a composite for each (e.g., .max() or .mean()).
+    4. Stack them using .addBands().
+
+    kwargs: 
+    geometry: UK coastline polygon 
+    time_window: (start_date, end_date) in 'YYYY-MM-DD' format
+
+    returns: 
+    stacked-image
+    """
+
+
+    start_date, end_date = time_window
+    # temperature 
+    temp = (
+        ee.ImageCollection("NASA/GLDAS/V021/NOAH/G025/T3H")
+        .filterDate(start_date, end_date)
+        .select("Tair_f_inst")
+        .max()
+        .subtract(273.15)
+        .rename("temp_c")
+    )
+
+    # humidity 
+    humidity = (ee.ImageCollection("NASA/GLDAS/V201/NOAH/G025/T3H")
+        .filterDate(start_date, end_date)
+        .select("Qair_f_inst")
+        .min()
+        .rename("humidity_q")
+    )
+
+    # rainfall 
+    rainfall = (ee.ImageCollection("NASA/GPM_L3/IMERG_V07")
+        .filterDate(start_date, end_date)
+        .select("precipitation")
+        .sum()
+        .multiply(0.5) # this turns the half hourly mm/hr rate into total rainfall in mm
+        .rename("precipitation_mm")
+    )
+
+        # satelites 
+    
+
     wind_hourly = (
         ee.ImageCollection("NASA/GSFC/MERRA/slv/2")
         .filterBounds(geometry)
@@ -139,22 +138,37 @@ def get_temporal_composites(geometry, time_window):
         wind_hourly.select("wind_magnitude").max()
         .addBands(wind_hourly.select("wind_direction_rad").mean())
     )
+    wind_data_magnitude = wind_hourly.select("wind_magnitude").max().rename("wind_magnitude")
+    wind_data_direction= wind_hourly.select("wind_direction_rad").mean().rename("wind_direction_rad")
 
+    # FIRMs mosaic, put together of multiple overlapping images 
+    firms_mosaic = (
+    ee.ImageCollection("FIRMS")
+    .filterDate(start_date, end_date)
+    .filterBounds(geometry)
+    .mosaic()
+    )
 
-
-
-
-
-
-
-
+    fire = (
+    firms_mosaic.select("T21").gt(320)
+    .And(firms_mosaic.select("confidence").gte(50))
+    .unmask(0)
+    .toFloat()
+    .rename("fire_active")
+)
 
 
     # 3. Stack everything together
     # This combines your scalar weather variables and your new hybrid wind features
-    stacked_image = temp.addBands(humidity).addBands(rainfall) \
-                        .addBands(wind_features) \
-                        .addBands(direction_features)
+    stacked_image = (
+        temp
+        .addBands(humidity)
+        .addBands(rainfall)
+        .addBands(wind_data_magnitude)
+        .addBands(wind_data_direction)
+        .addBands(fire)
+        .clip(geometry)
+    )
 
     return stacked_image
 
