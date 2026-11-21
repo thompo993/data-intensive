@@ -99,8 +99,35 @@ def get_temporal_composites(geometry, time_window):
     )
 
 
+    # wind direction and magnitude
+    wind_collection = (ee.ImageCollection("NASA/GSFC/MERRA/slv/2")
+                       .filterBounds(geometry)
+                       .filterDate(start_date, end_date)
+                       .max())
 
+    # 2. Define the expression for the hybrid features
+    # 'mag' = sqrt(u^2 + v^2)
+    # 'dir' = atan2(v, u) -> results in radians
+    # We use .expression to do this on the GEE server
+    wind_features = wind_collection.expression(
+        'sqrt(u**2 + v**2)', {
+            'u': wind_collection.select('u_wind'),
+            'v': wind_collection.select('v_wind')
+        }).rename('wind_magnitude')
 
+    direction_features = wind_collection.expression(
+        'atan2(v, u)', {
+            'u': wind_collection.select('u_wind'),
+            'v': wind_collection.select('v_wind')
+        }).rename('wind_direction_rad')
+
+    # 3. Stack everything together
+    # This combines your scalar weather variables and your new hybrid wind features
+    stacked_image = temp.addBands(humidity).addBands(rainfall) \
+                        .addBands(wind_features) \
+                        .addBands(direction_features)
+
+    return stacked_image
 
 
 
