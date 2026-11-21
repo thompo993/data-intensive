@@ -24,9 +24,16 @@ def initialize_gee():
     if not key_path:
         raise EnvironmentError("GEE_SERVICE_ACCOUNT_KEY not found.")
     
-    # Logic for ServiceAccountCredentials goes here
-    # ee.Initialize(...)
-    return True
+    key_path = os.getenv('GEE_SERVICE_ACCOUNT_KEY')
+    
+
+    credentials = ee.ServiceAccountCredentials('bp-gee-data-pipeline@uk-wildfire-predictor.iam.gserviceaccount.com', 
+                                                key_path,
+            )
+    ee.Initialize(credentials)
+            
+    print("Successfully initialized Earth Engine!")
+    return
 
 def get_temporal_composites(geometry, time_window):
     """
@@ -35,13 +42,31 @@ def get_temporal_composites(geometry, time_window):
     2. Load collections (IMERG, MERRA-2, etc.).
     3. Create a composite for each (e.g., .max() or .mean()).
     4. Stack them using .addBands().
+
+    kwargs: 
+    geometry: UK coastline polygon 
+    time_window: (start_date, end_date) in 'YYYY-MM-DD' format
     """
     # Example logic:
     # rainfall = ee.ImageCollection("NASA/GPM_L3/IMERG").filterBounds(geometry)...max()
     # temp = ee.ImageCollection("MODIS_DATA").filterBounds(geometry)...max()
     # stacked_image = rainfall.addBands(temp).addBands(wind)
     # return stacked_image
-    pass
+
+    start_date, end_date = time_window
+
+    temp = (
+        ee.ImageCollection("NASA/GLDAS/V021/NOAH/G025/T3H")
+        .filterDate(start_date, end_date)
+        .select("Tair_f_inst")
+        .max()
+        .subtract(273.15)
+        .rename("temp_c")
+    )
+
+
+    stacked_image = (temp)
+    return stacked_image
 
 def extract_features(stacked_image, geometry):
     """
