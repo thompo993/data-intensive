@@ -14,7 +14,7 @@ Gemma only wrote psuedocode, i wrote the final code myself
 '''
 
 import ee
-import os
+import os 
 import pandas as pd
 import datetime
 
@@ -42,12 +42,11 @@ def get_gb_aoi():
     Defines the area of interst (AOI) which is great gritan (england + scotland+wales)
     """
     gb_aoi = (ee.FeatureCollection("FAO/GAUL/2015/level1")
-        .filter(ee.Filter.eq("ADM0_NAME", "United Kingdom"))
         .filter(ee.Filter.inList("ADM1_NAME", ["England", "Scotland", "Wales"]))
         .geometry()
     )
     print("AOI area (km^2):", gb_aoi.area().divide(1e6).getInfo())
-    # Expect 229,000 km^2 
+    # Expect 229,000 km^2
     return gb_aoi
 
 def compute_hourly_wind_vector(image):
@@ -71,8 +70,8 @@ def compute_hourly_wind_vector(image):
 
         direction = (image.expression(
         'atan2(v, u)', {
-            'u': image.select('u_wind'),
-            'v': image.select('v_wind')
+            'u': image.select('U10M'),
+            'v': image.select('V10M')
         })
         .rename('wind_direction_rad')
         )
@@ -108,7 +107,7 @@ def get_temporal_composites(geometry, time_window):
     )
 
     # humidity 
-    humidity = (ee.ImageCollection("NASA/GLDAS/V201/NOAH/G025/T3H")
+    humidity = (ee.ImageCollection("NASA/GLDAS/V021/NOAH/G025/T3H")
         .filterDate(start_date, end_date)
         .select("Qair_f_inst")
         .min()
@@ -134,10 +133,6 @@ def get_temporal_composites(geometry, time_window):
         .map(compute_hourly_wind_vector)
     )
 
-    wind_data = (
-        wind_hourly.select("wind_magnitude").max()
-        .addBands(wind_hourly.select("wind_direction_rad").mean())
-    )
     wind_data_magnitude = wind_hourly.select("wind_magnitude").max().rename("wind_magnitude")
     wind_data_direction= wind_hourly.select("wind_direction_rad").mean().rename("wind_direction_rad")
 
@@ -172,7 +167,7 @@ def get_temporal_composites(geometry, time_window):
 
     return stacked_image
 
-def extract__features(stacked_image, geometry, scale=1000):
+def extract_features(stacked_image, geometry, scale=1000):
     """ extracts spatial features (max, mean stdDev) and
         timestamps across an ee.Imagecollection (our stacked images)
     """
@@ -191,19 +186,12 @@ def extract__features(stacked_image, geometry, scale=1000):
         window_start = ee.Date(image.get("system:time_start")).format("YYYY-MM-dd'T'HH:mm:ss")
         return ee.Feature(None, stats).set("window_start", window_start)
 
-
+    if isinstance(stacked_image, ee.Image):
+        stacked_image = ee.ImageCollection([stacked_image])
     features_composite = stacked_image.map(image_to_feature)
     info = features_composite.getInfo()
 
     return [f["properties"] for f in info["features"]]
-
-
-
-
-
-
-
-
 
 def save_to_parquet(rows, base_path):
     """
@@ -213,7 +201,7 @@ def save_to_parquet(rows, base_path):
     # 1. Create timestamp
 
     # Source - https://stackoverflow.com/a/55022031
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
     filename = f"{base_path}{timestamp}.parquet"
 
     directory = os.path.dirname(filename)
@@ -238,18 +226,14 @@ def main():
     # 1. Setup
     initialize_gee()
     
-    # 2. Define AOI (Use a polygon for Scotland/Wales/England)
     gb_geom = get_gb_aoi()
+    today =datetime.datetime.now(datetime.timezone.utc).date()
+    time_window = ((today - datetime.timedelta(days=1)).isoformat(), today.isoformat())
+    composite = get_temporal_composites(geometry=gb_geom, time_window=time_window)
 
-    # 3. Process
-    composite = get_temporal_composites(geometry=gb_geom, )
+    features = extract_features(composite, gb_geom)
 
-    
-    # composite = get_temporal_composites(geometry, "24h")
-    # features = extract_features(composite, geometry)
-    
-    # 4. Save
-    # save_to_parquet(features, "data/output_")
+    save_to_parquet(features, "../data")
 
 
 
