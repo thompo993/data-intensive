@@ -112,31 +112,33 @@ def get_temporal_composites(geometry, time_window):
         """
         magnitude = (image.expression(
         "sqrt(u**2 + v**2)", {
-            "u": wind_data.select("U10M"),
-            "v": wind_data.select("V10M")
+            "u": image.select("U10M"),
+            "v": image.select("V10M")
         })
         .rename("wind_magnitude")
         )
 
         direction = (image.expression(
         'atan2(v, u)', {
-            'u': wind_data.select('u_wind'),
-            'v': wind_data.select('v_wind')
+            'u': image.select('u_wind'),
+            'v': image.select('v_wind')
         })
         .rename('wind_direction_rad')
         )
 
         return magnitude.addBands(direction)
 
+    wind_hourly = (
+        ee.ImageCollection("NASA/GSFC/MERRA/slv/2")
+        .filterBounds(geometry)
+        .filterDate(start_date, end_date)
+        .map(compute_hourly_wind_vector)
+    )
 
-    wind_data = (ee.ImageCollection("NASA/GSFC/MERRA/slv/2")
-                       .filterBounds(geometry)
-                       .filterDate(start_date, end_date)
-                       compute_hourly_wind_vector()
-                       .rename("wind_vector")
-                       )
-
-
+    wind_data = (
+        wind_hourly.select("wind_magnitude").max()
+        .addBands(wind_hourly.select("wind_direction_rad").mean())
+    )
 
 
 
