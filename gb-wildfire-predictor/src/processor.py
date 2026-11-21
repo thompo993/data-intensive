@@ -99,27 +99,54 @@ def get_temporal_composites(geometry, time_window):
     )
 
 
-    # wind direction and magnitude
-    wind_collection = (ee.ImageCollection("NASA/GSFC/MERRA/slv/2")
+    def compute_hourly_wind_vector(image):
+        """
+        Turns U and V ciomponents from NASA/GSFC/MERRA/slv/2. conducts calculations on the GEE server
+        to reduce compute constraints
+
+        kwargs: 
+        image - image from the database 
+
+        returns: 
+        magnitude.addBands(direction) - two bands, magntiude, and direction respectively. 
+        """
+        magnitude = (image.expression(
+        "sqrt(u**2 + v**2)", {
+            "u": wind_data.select("U10M"),
+            "v": wind_data.select("V10M")
+        })
+        .rename("wind_magnitude")
+        )
+
+        direction = (image.expression(
+        'atan2(v, u)', {
+            'u': wind_data.select('u_wind'),
+            'v': wind_data.select('v_wind')
+        })
+        .rename('wind_direction_rad')
+        )
+
+        return magnitude.addBands(direction)
+
+
+    wind_data = (ee.ImageCollection("NASA/GSFC/MERRA/slv/2")
                        .filterBounds(geometry)
                        .filterDate(start_date, end_date)
-                       .max())
+                       compute_hourly_wind_vector()
+                       .rename("wind_vector")
+                       )
 
-    # 2. Define the expression for the hybrid features
-    # 'mag' = sqrt(u^2 + v^2)
-    # 'dir' = atan2(v, u) -> results in radians
-    # We use .expression to do this on the GEE server
-    wind_features = wind_collection.expression(
-        'sqrt(u**2 + v**2)', {
-            'u': wind_collection.select('u_wind'),
-            'v': wind_collection.select('v_wind')
-        }).rename('wind_magnitude')
 
-    direction_features = wind_collection.expression(
-        'atan2(v, u)', {
-            'u': wind_collection.select('u_wind'),
-            'v': wind_collection.select('v_wind')
-        }).rename('wind_direction_rad')
+
+
+
+
+
+
+
+
+
+
 
     # 3. Stack everything together
     # This combines your scalar weather variables and your new hybrid wind features
