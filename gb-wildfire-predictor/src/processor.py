@@ -172,19 +172,6 @@ def get_temporal_composites(geometry, time_window):
 
     return stacked_image
 
-
-
-
-
-
-
-
-
-
-
-    stacked_image = (temp)
-    return stacked_image
-
 def extract_features(stacked_image, geometry):
     """
     The 'Reduction' Step:
@@ -221,6 +208,11 @@ def main():
     
     # 4. Save
     # save_to_parquet(features, "data/output_")
+
+
+
+
+
 
 if __name__ == "__main__":
     main()
