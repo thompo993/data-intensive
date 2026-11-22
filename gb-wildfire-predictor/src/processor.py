@@ -135,7 +135,7 @@ def get_temporal_composites(geometry, time_window):
     )
 
     wind_data_magnitude = wind_hourly.select("wind_magnitude").max().rename("wind_magnitude")
-    wind_data_direction= wind_hourly.select("wind_direction_rad").mean().rename("wind_direction_rad")
+    wind_data_direction= wind_hourly.select("wind_direction_rad").rename("wind_direction_rad")
 
     # FIRMs mosaic, put together of multiple overlapping images 
     firms_mosaic = (
@@ -164,6 +164,7 @@ def get_temporal_composites(geometry, time_window):
         .addBands(wind_data_direction)
         .addBands(fire)
         .clip(geometry)
+        .set("system:time_start", ee.Date(start_date).millis())
     )
 
     return stacked_image
@@ -260,7 +261,7 @@ def main():
 
     features = extract_features(composite, gb_geom)
 
-    save_to_parquet(features, "../data")
+    save_to_parquet(features, "../data/")
     
 if __name__ == "__main__":
     main()
