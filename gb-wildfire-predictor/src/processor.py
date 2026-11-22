@@ -17,6 +17,7 @@ import ee
 import os 
 import pandas as pd
 import datetime
+import argparse
 
 def initialize_gee():
     """
@@ -223,22 +224,43 @@ def save_to_parquet(rows, base_path):
     print(f"Saved: {filename}")
 
 def main():
-    # 1. Setup
-    initialize_gee()
+    # 2. Initialize the Argument Parser
+    parser = argparse.ArgumentParser(description="Fetch wildfire features from GEE and save to Parquet.")
     
+    # 3. Add arguments
+    # We use '--' to make them optional flags
+    parser.add_argument('--start', type=str, help="Start date in YYYY-MM-DD format")
+    parser.add_argument('--end', type=str, help="End date in YYYY-MM-DD format")
+    
+    args = parser.parse_args()
+
+    # 4. Setup Environment
+    initialize_gee()
     gb_geom = get_gb_aoi()
-    today =datetime.datetime.now(datetime.timezone.utc).date()
-    time_window = ((today - datetime.timedelta(days=1)).isoformat(), today.isoformat())
+
+    # 5. Logic to decide which time window to use
+    if args.start and args.end:
+        # If the user provided dates, use them
+        start_date = args.start
+        end_date = args.end
+        print(f"Running historical mode: {start_date} to {end_date}")
+    else:
+        # Default behavior: The last 24 hours
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+        start_date = (today - datetime.timedelta(days=1)).isoformat()
+        end_date = today.isoformat()
+        print(f"Running default mode: {start_date} to {end_date}")
+
+    # 6. Pass the chosen dates into your existing logic
+    time_window = (start_date, end_date)
+    
+    # Note: Your current get_temporal_composites accepts (geometry, time_window)
+    # which is exactly what we need.
     composite = get_temporal_composites(geometry=gb_geom, time_window=time_window)
 
     features = extract_features(composite, gb_geom)
 
     save_to_parquet(features, "../data")
-
-
-
-
-
-
+    
 if __name__ == "__main__":
     main()
