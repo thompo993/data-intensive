@@ -77,7 +77,7 @@ def compute_hourly_wind_vector(image):
         .rename('wind_direction_rad')
         )
 
-        return magnitude.addBands(direction)
+        return magnitude.addBands(direction).addBands(image.select(["U10M", "V10M"]))
 
 def get_temporal_composites(geometry, time_window):
     """
@@ -135,8 +135,9 @@ def get_temporal_composites(geometry, time_window):
     )
 
     wind_data_magnitude = wind_hourly.select("wind_magnitude").max().rename("wind_magnitude")
-    wind_data_direction= wind_hourly.select("wind_direction_rad").rename("wind_direction_rad")
+    wind_data_direction = (wind_hourly.select("V10M").mean().atan2(wind_hourly.select("U10M").mean()).rename("wind_direction_rad"))
 
+    
     # FIRMs mosaic, put together of multiple overlapping images 
     firms_mosaic = (
     ee.ImageCollection("FIRMS")
@@ -261,7 +262,7 @@ def main():
 
     features = extract_features(composite, gb_geom)
 
-    save_to_parquet(features, "../data/")
+    save_to_parquet(features, "data/")
     
 if __name__ == "__main__":
     main()

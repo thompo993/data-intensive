@@ -28,5 +28,5 @@ export GEE_SERVICE_ACCOUNT_KEY="/user/work/sv23035/data-intensive/gb-wildfire-pr
 END_DATE_PLUS_ONE=$(date -I -d "$TARGET_DATE + 1 day")
 
 echo "Processing window: $TARGET_DATE to $END_DATE_PLUS_ONE"
-python processor.py --start "$TARGET_DATE" --end "$END_DATE_PLUS_ONE"
+python src/processor.py --start "$TARGET_DATE" --end "$END_DATE_PLUS_ONE"
 echo "job completed for $TARGET_DATE"
