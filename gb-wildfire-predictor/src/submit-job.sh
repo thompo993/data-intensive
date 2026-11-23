@@ -13,10 +13,13 @@
 #SBATCH --output=secrets/logs/job_%j_%x.out
 #SBATCH --error=secrets/logs/job_%j_%x.err
 
-if [[ -z "${TARGET_DATE:-}" ]]; then
-    echo "Error: TARGET_DATE not set" >&2
+if [[ -z "${START_DATE:-}" || -z "${SLURM_ARRAY_TASK_ID:-}" ]]; then
+    echo "Error: START_DATE or SLURM_ARRAY_TASK_ID not set" >&2
     exit 1
 fi
+
+TARGET_DATE=$(date -I -d "$START_DATE + $SLURM_ARRAY_TASK_ID days")
+END_DATE_PLUS_ONE=$(date -I -d "$TARGET_DATE + 1 day")
 
 source ~/initMamba.sh
 eval "$(mamba shell hook --shell bash)"

@@ -7,14 +7,15 @@
 
 set -euo pipefail
 
-START_DATE="${1:-2023-06-01}"
-END_DATE="${2:-2023-06-10}"
+START_DATE="${1:-2023-01-01}"
+END_DATE="${2:-2024-01-01}"
+
+# n days -1
+N=$(( ( $(date -d "$END_DATE" +%s) - $(date -d "$START_DATE" +%s) ) / 86400 ))
+
 
 mkdir -p secrets/logs
 
-current_date="$START_DATE"
-while [[ ! "$current_date" > "$END_DATE" ]]; do   
-    echo "Submitting: $current_date"
-    sbatch --export=ALL,TARGET_DATE="$current_date" src/submit-job.sh
-    current_date=$(date -I -d "$current_date + 1 day")
-done
+sbatch --array=0-"$N"%10 \
+       --export=ALL,START_DATE="$START_DATE" \
+       src/submit-job.sh

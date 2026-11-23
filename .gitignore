@@ -6,8 +6,14 @@
 .vscode
 secrets/
 *.json
+*.html
+*.svg
+*.png
+
 miniforge3/
 Miniforge3-Linux-x86_64.sh
 earth-monitoring-data/
 tutorial/
 data/
+figs/
+
