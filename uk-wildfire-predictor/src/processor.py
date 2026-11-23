@@ -38,17 +38,19 @@ def initialize_gee():
     print("Successfully initialized Earth Engine!")
     return
 
-def get_gb_aoi(): 
+def get_uk_aoi() -> ee.Geometry:
     """
-    Defines the area of interst (AOI) which is great gritan (england + scotland+wales)
+    Defines the Area of Interest (AOI) for the United Kingdom
+    (England, Scotland, Wales, and Northern Ireland).
     """
-    gb_aoi = (ee.FeatureCollection("FAO/GAUL/2015/level1")
-        .filter(ee.Filter.inList("ADM1_NAME", ["England", "Scotland", "Wales"]))
+    uk_aoi = (
+        ee.FeatureCollection("FAO/GAUL/2015/level1")
+        .filter(ee.Filter.eq("ADM0_NAME", "United Kingdom"))
         .geometry()
     )
-    print("AOI area (km^2):", gb_aoi.area().divide(1e6).getInfo())
-    # Expect 229,000 km^2
-    return gb_aoi
+    print("AOI area (km^2):", uk_aoi.area().divide(1e6).getInfo())
+    # Expect ~243,000 km^2
+    return uk_aoi
 
 def compute_hourly_wind_vector(image):
         """
@@ -238,7 +240,7 @@ def main():
 
     # 4. Setup Environment
     initialize_gee()
-    gb_geom = get_gb_aoi()
+    gb_geom = get_uk_aoi()
 
     # 5. Logic to decide which time window to use
     if args.start and args.end:
