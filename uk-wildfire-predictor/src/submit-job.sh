@@ -26,7 +26,7 @@ eval "$(mamba shell hook --shell bash)"
 mamba activate gb-wildfire-predictor
 cd "$SLURM_SUBMIT_DIR"
 
-export GEE_SERVICE_ACCOUNT_KEY="/user/work/sv23035/data-intensive/gb-wildfire-predictor/secrets/uk-wildfire-predictor-dd633889f29d.json"
+export GEE_SERVICE_ACCOUNT_KEY="/user/work/sv23035/data-intensive/uk-wildfire-predictor/secrets/uk-wildfire-predictor-dd633889f29d.json"
 
 END_DATE_PLUS_ONE=$(date -I -d "$TARGET_DATE + 1 day")
 

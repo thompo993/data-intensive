@@ -38,19 +38,11 @@ def initialize_gee():
     print("Successfully initialized Earth Engine!")
     return
 
-def get_uk_aoi() -> ee.Geometry:
-    """
-    Defines the Area of Interest (AOI) for the United Kingdom
-    (England, Scotland, Wales, and Northern Ireland).
-    """
-    uk_aoi = (
-        ee.FeatureCollection("FAO/GAUL/2015/level1")
-        .filter(ee.Filter.eq("ADM0_NAME", "United Kingdom"))
-        .geometry()
-    )
-    print("AOI area (km^2):", uk_aoi.area().divide(1e6).getInfo())
-    # Expect ~243,000 km^2
-    return uk_aoi
+get_uk_aoi = (
+    ee.FeatureCollection("FAO/GAUL/2015/level1")
+    .filter(ee.Filter.inList("ADM1_NAME", ["England", "Scotland", "Wales", "Northern Ireland"]))
+    .geometry()
+)
 
 def compute_hourly_wind_vector(image):
         """
@@ -148,13 +140,28 @@ def get_temporal_composites(geometry, time_window):
     .mosaic()
     )
 
+    firms = (
+        ee.ImageCollection("FIRMS")
+        .filterDate(start_date, end_date)
+        .filterBounds(geometry)
+    )
+
+    def to_fire(img):
+        return (
+            img.select("T21").gt(320)
+            .And(img.select("confidence").gte(50))
+            .rename("fire_active")
+            .toFloat()
+        )
+
+    zero = ee.Image.constant(0).toFloat().rename("fire_active")
+
     fire = (
-    firms_mosaic.select("T21").gt(320)
-    .And(firms_mosaic.select("confidence").gte(50))
-    .unmask(0)
-    .toFloat()
-    .rename("fire_active")
-)
+        firms.map(to_fire)
+        .merge(ee.ImageCollection([zero]))   
+        .max()
+        .unmask(0)
+    )
 
 
     # 3. Stack everything together
@@ -240,7 +247,7 @@ def main():
 
     # 4. Setup Environment
     initialize_gee()
-    gb_geom = get_uk_aoi()
+    uk_geom = get_uk_aoi()
 
     # 5. Logic to decide which time window to use
     if args.start and args.end:
@@ -260,9 +267,9 @@ def main():
     
     # Note: Your current get_temporal_composites accepts (geometry, time_window)
     # which is exactly what we need.
-    composite = get_temporal_composites(geometry=gb_geom, time_window=time_window)
+    composite = get_temporal_composites(geometry=uk_geom, time_window=time_window)
 
-    features = extract_features(composite, gb_geom)
+    features = extract_features(composite, uk_geom)
 
     save_to_parquet(features, "data/")
     
