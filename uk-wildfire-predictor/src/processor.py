@@ -250,10 +250,11 @@ def save_to_parquet(rows, base_path):
         raise ValueError("No data found from GEE, so not saving...")
 
     df["window_start"] = pd.to_datetime(df["window_start"], utc=True)
-    df = df.sort_values("window_start").reset_index(drop=True)
+    df = df.sort_values(["window_start", "cell_id"]).reset_index(drop=True)
     
     # 3. df.to_parquet(filename)
-    cols = ["window_start"] + sorted(c for c in df.columns if c != "window_start")
+    front = ["window_start", "cell_id", "lat", "lon"]
+    cols = front + sorted(c for c in df.columns if c not in front)
     df[cols].to_parquet(filename, index=False)
     print(f"Saved: {filename}")
 
