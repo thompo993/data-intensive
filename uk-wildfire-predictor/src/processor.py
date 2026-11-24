@@ -25,10 +25,7 @@ def initialize_gee():
     """
     key_path = os.getenv('GEE_SERVICE_ACCOUNT_KEY')
     if not key_path:
-        raise EnvironmentError("GEE_SERVICE_ACCOUNT_KEY not found.")
-    
-    key_path = os.getenv('GEE_SERVICE_ACCOUNT_KEY')
-    
+        raise EnvironmentError("GEE_SERVICE_ACCOUNT_KEY not found.")     
 
     credentials = ee.ServiceAccountCredentials('bp-gee-data-pipeline@uk-wildfire-predictor.iam.gserviceaccount.com', 
                                                 key_path,
@@ -190,25 +187,43 @@ def get_temporal_composites(geometry, time_window):
 def extract_features(stacked_image, geometry, scale=1000):
     """ extracts spatial features (max, mean stdDev) and
         timestamps across an ee.Imagecollection (our stacked images)
+        puts into 10km grids. 
     """
     reducer = (ee.Reducer.max()
             .combine(ee.Reducer.mean(), sharedInputs=True)
-            .combine(ee.Reducer.stdDev(), sharedInputs=True)
-    )
-    
+        )
+
+    grid = geometry.coveringGrid(ee.Projection("EPSG:27700"), 10_000)
+
     def image_to_feature(image):
-        stats = image.reduceRegion(
+        """get the image and convert it into statistics (data reduction)
+        """
+        stats = image.reduceRegions(
+            collection=grid,
             reducer=reducer, 
             geometry=geometry,
             scale=scale,
-            maxPixels= 1_000_000_000 
         )
         window_start = ee.Date(image.get("system:time_start")).format("YYYY-MM-dd'T'HH:mm:ss")
-        return ee.Feature(None, stats).set("window_start", window_start)
+
+
+        def get_pixel_centre(pixel):
+            """ get the lat and long of each pixel to get a location
+            """
+            centre = pixel.geometry().transform("EPSG:4326", 1).centroid(1).coordinates()
+            return(ee.Feature(None, pixel.toDictionary())
+                   .set({"cell_id": pixel.id(),
+                         "lon": centre.get(0),
+                         "lat": centre.get(1),
+                         "window_start": window_start
+                }))
+        
+        return stats.map(get_pixel_centre)
+
 
     if isinstance(stacked_image, ee.Image):
         stacked_image = ee.ImageCollection([stacked_image])
-    features_composite = stacked_image.map(image_to_feature)
+    features_composite = stacked_image.map(image_to_feature).flatten()
     info = features_composite.getInfo()
 
     return [f["properties"] for f in info["features"]]
