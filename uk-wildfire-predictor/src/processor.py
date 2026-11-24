@@ -201,7 +201,6 @@ def extract_features(stacked_image, geometry, scale=1000):
         stats = image.reduceRegions(
             collection=grid,
             reducer=reducer, 
-            geometry=geometry,
             scale=scale,
         )
         window_start = ee.Date(image.get("system:time_start")).format("YYYY-MM-dd'T'HH:mm:ss")
