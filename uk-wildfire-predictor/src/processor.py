@@ -231,30 +231,39 @@ def save_to_parquet(rows, base_path):
     """
     The 'Persistence' Step:
     Converts the dictionary to a DataFrame and saves as Parquet.
+    saves a tmp file so corrupted jobs dont fail 
+    adds a timestamp so that the file is not overlapped 
+
+    file format: 
+    date[YYYYMMDD]timestamp[YYYYMMDD]
     """
-    # 1. Create timestamp
 
-    # Source - https://stackoverflow.com/a/55022031
-    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-    filename = f"{base_path}{timestamp}.parquet"
-
-    directory = os.path.dirname(filename)
-    if directory:
-        os.makedirs(directory, exist_ok=True)
-    
-    
-    # 2. Create DataFrame   
+    # 1. Create DataFrame   
     df = pd.DataFrame(rows)
     if df.empty:
         raise ValueError("No data found from GEE, so not saving...")
 
     df["window_start"] = pd.to_datetime(df["window_start"], utc=True)
     df = df.sort_values(["window_start", "cell_id"]).reset_index(drop=True)
+
+    # 2. Create filename
+    # Source - https://stackoverflow.com/a/55022031
+    day = df["window_start"].min().strftime("%Y-%m-%d")
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+    # date, timestamp 
+    filename = f"dt{base_path}{day}_ts{timestamp}.parquet"
+
+
+    directory = os.path.dirname(filename)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
     
-    # 3. df.to_parquet(filename)
+    # write temp file and then rename, so a cancelled job cant corrupt (current issue)
     front = ["window_start", "cell_id", "lat", "lon"]
     cols = front + sorted(c for c in df.columns if c not in front)
+    tmp = filename + ".tmp"
     df[cols].to_parquet(filename, index=False)
+    os.replace(tmp, filename)
     print(f"Saved: {filename}")
 
 def main():
