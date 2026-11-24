@@ -38,11 +38,19 @@ def initialize_gee():
     print("Successfully initialized Earth Engine!")
     return
 
-get_uk_aoi = (
-    ee.FeatureCollection("FAO/GAUL/2015/level1")
-    .filter(ee.Filter.inList("ADM1_NAME", ["England", "Scotland", "Wales", "Northern Ireland"]))
-    .geometry()
-)
+def get_uk_aoi() -> ee.Geometry:
+    """
+    Defines the Area of Interest (AOI) for the UK
+    (England, Scotland, Wales and Northern Ireland).
+    """
+    uk_aoi = (
+        ee.FeatureCollection("FAO/GAUL/2015/level1")
+        .filter(ee.Filter.inList("ADM1_NAME", ["England", "Scotland", "Wales", "Northern Ireland"]))
+        .geometry()
+    )
+    print("AOI area (km^2):", uk_aoi.area().divide(1e6).getInfo())
+    # Expect ~243,000 km^2
+    return uk_aoi
 
 def compute_hourly_wind_vector(image):
         """
